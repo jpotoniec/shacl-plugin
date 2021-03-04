@@ -6,12 +6,15 @@ import at.ac.tuwien.shacl.plugin.syntax.JenaOwlConverter;
 import at.ac.tuwien.shacl.plugin.util.ShaclValidationReport;
 import at.ac.tuwien.shacl.plugin.util.ShaclValidationResult;
 import at.ac.tuwien.shacl.plugin.util.ShaclValidationResultComparator;
+import org.apache.jena.rdf.model.Model;
+import org.apache.log4j.Logger;
 import org.protege.editor.core.ui.view.View;
 import org.protege.editor.owl.model.OWLModelManager;
 import org.protege.editor.owl.model.OWLWorkspace;
 import org.protege.editor.owl.model.inference.OWLReasonerManager;
 import org.protege.editor.owl.model.inference.ReasonerStatus;
 import org.protege.editor.owl.model.selection.OWLSelectionModelListener;
+import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLClass;
 import org.semanticweb.owlapi.model.OWLEntity;
 import org.semanticweb.owlapi.model.OWLNamedIndividual;
@@ -23,6 +26,8 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableModel;
 import java.awt.*;
 import java.util.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -35,6 +40,7 @@ public class ShaclConstraintViolationPanel extends JPanel {
      *
      */
     private static final long serialVersionUID = 1093799641840761261L;
+    private static final Logger log = Logger.getLogger(ShaclConstraintViolationPanel.class);
 
     private final OWLWorkspace owlWorkspace;
     private final View view;
@@ -229,6 +235,27 @@ public class ShaclConstraintViolationPanel extends JPanel {
         };
         table.setAutoscrolls(true);
         table.setAutoCreateRowSorter(true);
+        table.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2 && table.getSelectedRow() != -1) {
+                    int selectedRow = table.convertRowIndexToModel(table.getSelectedRow());
+                    Object focusNode = tableModel.getValueAt(selectedRow, 3);
+                    try {
+                        Model model = lastReport.validationResults.iterator().next().model;
+                        IRI iri = IRI.create(model.expandPrefix(focusNode.toString()));
+                        Set<OWLEntity> entities = owlWorkspace.getOWLModelManager().getOWLEntityFinder().getEntities(iri);
+                        if (entities.size() >= 1)
+                            owlWorkspace.getOWLSelectionModel().setSelectedEntity(entities.iterator().next());
+                        else
+                            log.info(String.format("Focus node not found: %s", iri));
+
+                    } catch (Exception ex) {
+                        log.warn("Focus node search failed", ex);
+                    }
+                }
+            }
+        });
 
         JScrollPane scroll = new JScrollPane(table);
 

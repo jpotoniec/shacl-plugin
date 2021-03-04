@@ -228,6 +228,7 @@ public class ShaclConstraintViolationPanel extends JPanel {
             }
         };
         table.setAutoscrolls(true);
+        table.setAutoCreateRowSorter(true);
 
         JScrollPane scroll = new JScrollPane(table);
 
